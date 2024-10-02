@@ -9,4 +9,7 @@ class KubernetesTestController {
 
     @GetMapping("/kubernetes")
     fun getWork() = "IT WORKS"
+
+    @GetMapping("/help")
+    fun getHelp() = "Help 1"
 }

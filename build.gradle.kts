@@ -18,18 +18,21 @@ repositories {
     mavenCentral()
 }
 
+val allureVersion = "2.25.0"
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-
     implementation("org.springframework.boot:spring-boot-starter-web")
-    
 
-//    -------------------- TEST scope --------------------------------------
-
+    // -------------------- TEST scope --------------------------------------
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // Import allure-bom to ensure correct versions of all the dependencies are used
+    testImplementation(platform("io.qameta.allure:allure-bom:$allureVersion"))
+    testImplementation("io.qameta.allure:allure-junit5")
 }
 
 kotlin {
@@ -40,4 +43,24 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    testLogging {
+        events("passed", "failed", "skipped")
+        showExceptions = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+
+    // Set Allure output directory
+    outputs.dir(layout.buildDirectory.dir("allure-results"))
+}
+
+tasks.register<Exec>("allureReport") {
+    group = "reporting"
+    description = "Generate Allure Report"
+    commandLine("allure", "generate", layout.buildDirectory.dir("allure-results").get().asFile.absolutePath, "-o", layout.buildDirectory.dir("allure-report").get().asFile.absolutePath)
+}
+
+tasks.register<Exec>("allureServe") {
+    group = "reporting"
+    description = "Serve Allure Report"
+    commandLine("allure", "serve", layout.buildDirectory.dir("allure-results").get().asFile.absolutePath)
 }
