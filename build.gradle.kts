@@ -48,19 +48,20 @@ tasks.withType<Test> {
         showExceptions = true
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
-
+    // Configure Allure output directory
+    systemProperty("allure.results.directory", file("build/allure-results"))
     // Set Allure output directory
-    outputs.dir(layout.buildDirectory.dir("allure-results"))
+    outputs.dir(layout.buildDirectory.dir("build/allure-results"))
 }
 
 tasks.register<Exec>("allureReport") {
     group = "reporting"
     description = "Generate Allure Report"
-    commandLine("allure", "generate", layout.buildDirectory.dir("allure-results").get().asFile.absolutePath, "-o", layout.buildDirectory.dir("allure-report").get().asFile.absolutePath)
+    commandLine("allure", "generate", layout.buildDirectory.dir("build/allure-results").get().asFile.absolutePath, "-o", layout.buildDirectory.dir("build/allure-report").get().asFile.absolutePath)
 }
 
 tasks.register<Exec>("allureServe") {
     group = "reporting"
     description = "Serve Allure Report"
-    commandLine("allure", "serve", layout.buildDirectory.dir("allure-results").get().asFile.absolutePath)
+    commandLine("allure", "serve", layout.buildDirectory.dir("build/allure-results").get().asFile.absolutePath)
 }
