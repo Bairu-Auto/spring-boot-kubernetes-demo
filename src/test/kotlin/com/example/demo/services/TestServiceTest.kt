@@ -22,6 +22,6 @@ class TestServiceTest(
     fun `test 1`() {
         val result = testService.returnStaticWord()
 
-        assertEquals(EXPECTED_RESULT , result)
+        assertEquals(EXPECTED_RESULT, result)
     }
 }
