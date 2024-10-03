@@ -13,7 +13,7 @@ class TestServiceTest(
 ) {
 
     companion object {
-        private val EXPECTED_RESULT = "Hello World!"
+        private const val EXPECTED_RESULT = "Hello World!"
     }
 
     @Test
