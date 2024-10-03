@@ -5,5 +5,5 @@ import org.springframework.stereotype.Service
 @Service
 class TestService {
 
-    fun returnStaticWord() = "Hello World!!!"
+    fun returnStaticWord() = "Hello World!"
 }
