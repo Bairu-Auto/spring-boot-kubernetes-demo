@@ -11,48 +11,124 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Check Jenkins Build Status
-        id: jenkins_status
+      - name: Trigger Jenkins Build
+        id: trigger_build
         run: |
-          JENKINS_BUILD_URL="${{ secrets.JENKINS_URL }}:${{ secrets.JENKINS_PORT }}/job/bairu_roof_orchestrator/lastBuild/api/json"
-          RESPONSE=$(curl -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_TOKEN }}" -s "$JENKINS_BUILD_URL")
+          JENKINS_BUILD_URL="${{ secrets.JENKINS_URL }}:${{ secrets.JENKINS_PORT }}/job/bairu_roof_orchestrator/buildWithParameters"
+          RESPONSE=$(curl -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_TOKEN }}" -X POST "$JENKINS_BUILD_URL" \
+          --data-urlencode "GITHUB_REF=${{ github.ref }}" --data-urlencode "GITHUB_SHA=${{ github.sha }}")
+          echo "Triggered Jenkins build"
 
-          # Debug output to see the raw response from Jenkins
-          echo "Response from Jenkins: $RESPONSE"
+      # Add a separate step for delay
+      - name: Wait for Jenkins build to start
+        run: |
+          echo "Waiting for 10 seconds before proceeding..."
+          sleep 10
+    
+
+      - name: Get Build Number
+        id: get_build_number
+        run: |
+          JENKINS_BUILD_API_URL="${{ secrets.JENKINS_URL }}:${{ secrets.JENKINS_PORT }}/job/bairu_roof_orchestrator/lastBuild/api/json"
+          BUILD_INFO=$(curl -s -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_TOKEN }}" "$JENKINS_BUILD_API_URL")
+          BUILD_NUMBER=$(echo "$BUILD_INFO" | jq -r .number)
+        
+          if [ -z "$BUILD_NUMBER" ] || [ "$BUILD_NUMBER" == "null" ]; then
+            echo "Could not retrieve BUILD_NUMBER from response."
+            exit 1
+          fi
+
+          echo "Build number: $BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+
+      - name: Wait for Jenkins Build to Complete
+        id: wait_for_build
+        run: |
+          BUILD_NUMBER=${{ env.BUILD_NUMBER }}
+          JENKINS_BUILD_STATUS_URL="${{ secrets.JENKINS_URL }}:${{ secrets.JENKINS_PORT }}/job/bairu_roof_orchestrator/$BUILD_NUMBER/api/json"
           
-          # Check for empty response
-          if [[ -z "$RESPONSE" ]]; then
-            echo "Received an empty response from Jenkins."
+          # Wait for the Jenkins build to complete
+          for i in {1..30}; do  # Wait for a maximum of 30 iterations (about 5 minutes)
+            sleep 10  # Wait for 10 seconds before polling
+            BUILD_STATUS=$(curl -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_TOKEN }}" -s "$JENKINS_BUILD_STATUS_URL")
+
+            if [[ "$RESULT" != "null" ]]; then  # Check if the build is complete
+              echo "Jenkins build completed with status: $RESULT"
+              echo "status=$RESULT" >> $GITHUB_ENV  # Set the build status in the environment
+              break
+            fi
+          done
+
+          # Check if the build status was never set
+          if [[ "$RESULT" == "null" ]]; then
+            echo "Jenkins build did not complete in time."
             exit 1
           fi
 
-          if [[ $? -ne 0 ]]; then
-            echo "Failed to retrieve Jenkins build status."
-            exit 1
-          fi
+      - name: Report Jenkins Build Status
+        run: |
+          echo "Jenkins build status was: ${{ env.status }}"
 
-          BUILD_STATUS=$(echo "$RESPONSE" | jq -r '.result')
+      - name: Wait for Jenkins Job to Complete
+        run: |
+          STATUS="UNKNOWN"  # Initial status
+          while [ "$STATUS" = "UNKNOWN" ]; do
+            echo "Checking Jenkins job status..."
+            # Replace this with the command to get the actual job status
+            STATUS=$(curl -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_TOKEN }}" \
+              "${{ secrets.JENKINS_URL }}:${{ secrets.JENKINS_PORT }}/job/bairu_roof_orchestrator/lastBuild/api/json" \
+              | jq -r '.result')  # Adjust jq query based on actual API response
 
-          if [[ "$BUILD_STATUS" == "SUCCESS" ]]; then
-            echo "Jenkins build succeeded."
-            echo "status=success" >> $GITHUB_ENV
-          else
-            echo "Jenkins build failed or is unstable."
-            echo "status=failed" >> $GITHUB_ENV
-          fi
+            # Optional: Add a sleep delay to avoid rapid polling
+            sleep 10  # Wait for 10 seconds before checking again
+          done
+          echo "Jenkins job has completed with status: $STATUS"
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v2
-        with:
-          java-version: '21'
-          distribution: 'temurin'
+#      - name: Log in to Jenkins and Download Allure Reports (HTML)
+#        run: |
+#          # Construct the login and report URLs
+#          LOGIN_URL="${{ secrets.JENKINS_URL }}:${{ secrets.JENKINS_PORT }}/j_acegi_security_check"
+#          REPORT_URL="${{ secrets.JENKINS_URL }}:${{ secrets.JENKINS_PORT }}/job/bairu_roof_orchestrator/${{ env.BUILD_NUMBER }}/allure/"
+#
+#          echo "Logging in to Jenkins"
+#
+#          # Log in to Jenkins and save the session cookies
+#          wget --save-cookies cookies.txt \
+#               --keep-session-cookies \
+#               --post-data "j_username=${{ secrets.JENKINS_USER }}&j_password=${{ secrets.JENKINS_API_TOKEN }}" \
+#               "$LOGIN_URL"
+#
+#          echo "Fetching Allure Reports from $REPORT_URL"
+#
+#          # Fetch Allure reports using the saved cookies
+#          wget --mirror --no-parent --reject "index.html*" \
+#               --load-cookies cookies.txt \
+#               "$REPORT_URL" -P allure-reports/
+#
+#          # Optional: Clean up cookies file
+#          rm -R cookies.txt
+#
+#      - name: Verify Downloaded Files
+#        run: |
+#          ls -l allure-reports/
 
-      - name: Build with Gradle
-        if: env.status == 'success'  # Only build if Jenkins was successful
-        run: ./gradlew build
+#      - name: Publish Allure Reports
+#        uses: peaceiris/actions-gh-pages@v3
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          publish_dir: ./allure-reports
 
-      - name: Run tests
-        if: env.status == 'success'  # Only run tests if Jenkins was successful
-        run: ./gradlew test
+  deploy-allure:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Publish Allure Report with GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          publish_dir: ./allure-reports
+
