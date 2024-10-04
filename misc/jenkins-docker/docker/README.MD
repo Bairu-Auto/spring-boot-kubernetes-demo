@@ -9,7 +9,7 @@ docker run --name jenkins-docker --rm --detach ^
 docker:dind
 
 [//]: # (Dockerfile)
-FROM jenkins/jenkins:2.462.3-jdk17
+FROM jenkins/jenkins:2.479-jdk21
 USER root
 RUN apt-get update && apt-get install -y lsb-release
 RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
@@ -32,13 +32,13 @@ RUN jenkins-plugin-cli --plugins "blueocean docker-workflow"
 
 
 [//]: # (Build docker image from Dockerfile)
-docker build -t myjenkins-blueocean:2.462.3-1 .
+docker build -t myjenkins-blueocean-jdk-21:2.479-jdk21 .
 
 [//]: # (Run container)
-docker run --name jenkins-blueocean --restart=on-failure --detach --network jenkins --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --publish 8080:8080 --publish 50000:50000 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro myjenkins-blueocean:2.462.3-1 
+docker run --name jenkins-blueocean-jdk-21 --restart=on-failure --detach --network jenkins --env DOCKER_HOST=tcp://docker:2376 --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 --publish 8080:8080 --publish 50000:50000 --volume jenkins-data:/var/jenkins_home --volume jenkins-docker-certs:/certs/client:ro myjenkins-blueocean-jdk-21:2.479-jdk21
 
 [//]: # (Connect to container)
-docker exec -it -u jenkins jenkins-blueocean bash
+docker exec -it -u jenkins jenkins-blueocean-jdk-21 bash
 
 [//]: # (Generate key)
 ssh-keygen -t ed25519 -b 4096 -C "<you email here>"

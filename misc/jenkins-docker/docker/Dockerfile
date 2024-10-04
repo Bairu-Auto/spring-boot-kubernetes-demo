@@ -1,4 +1,4 @@
-FROM jenkins/jenkins:2.462.3-jdk17
+FROM jenkins/jenkins:2.479-jdk21
 USER root
 RUN apt-get update && apt-get install -y lsb-release
 RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
@@ -10,6 +10,8 @@ RUN apt-get install -y ./google-chrome-stable_current_amd64.deb
 RUN rm google-chrome-stable_current_amd64.deb
 # Check chrome version
 RUN echo "Chrome: " && google-chrome --version
+
+RUN apt-get install -y jq
 
 RUN echo "deb [arch=$(dpkg --print-architecture) \
   signed-by=/usr/share/keyrings/docker-archive-keyring.asc] \

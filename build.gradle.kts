@@ -3,6 +3,7 @@ plugins {
     kotlin("plugin.spring") version "1.9.25"
     id("org.springframework.boot") version "3.3.4"
     id("io.spring.dependency-management") version "1.1.6"
+    id("io.qameta.allure") version "2.12.0" // Add the Allure plugin
 }
 
 group = "com.example"
@@ -18,7 +19,7 @@ repositories {
     mavenCentral()
 }
 
-val allureVersion = "2.25.0"
+val allureVersion = "2.29.0"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
@@ -54,13 +55,13 @@ tasks.withType<Test> {
     outputs.dir(layout.buildDirectory.dir("build/allure-results"))
 }
 
-tasks.register<Exec>("allureReport") {
+tasks.register<Exec>("generateAllureReport") {
     group = "reporting"
     description = "Generate Allure Report"
     commandLine("allure", "generate", layout.buildDirectory.dir("build/allure-results").get().asFile.absolutePath, "-o", layout.buildDirectory.dir("build/allure-report").get().asFile.absolutePath)
 }
 
-tasks.register<Exec>("allureServe") {
+tasks.register<Exec>("serveAllureReport") {
     group = "reporting"
     description = "Serve Allure Report"
     commandLine("allure", "serve", layout.buildDirectory.dir("build/allure-results").get().asFile.absolutePath)
