@@ -58,11 +58,24 @@ tasks.withType<Test> {
 tasks.register<Exec>("generateAllureReport") {
     group = "reporting"
     description = "Generate Allure Report"
-    commandLine("allure", "generate", layout.buildDirectory.dir("build/allure-results").get().asFile.absolutePath, "-o", layout.buildDirectory.dir("build/allure-report").get().asFile.absolutePath)
+    commandLine(
+        "allure", "generate",
+        layout.buildDirectory.dir("build/allure-results").get().asFile.absolutePath,
+        "-o", layout.buildDirectory.dir("build/allure-report").get().asFile.absolutePath
+    )
 }
 
 tasks.register<Exec>("serveAllureReport") {
     group = "reporting"
     description = "Serve Allure Report"
     commandLine("allure", "serve", layout.buildDirectory.dir("build/allure-results").get().asFile.absolutePath)
+}
+
+// Define dependencies
+tasks.named("generateAllureReport").configure {
+    dependsOn(tasks.named("build")) // Make this task depend on the build task
+}
+
+tasks.named("serveAllureReport").configure {
+    dependsOn(tasks.named("generateAllureReport")) // Make this task depend on the generateAllureReport task
 }

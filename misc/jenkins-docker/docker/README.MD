@@ -45,3 +45,6 @@ ssh-keygen -t ed25519 -b 4096 -C "<you email here>"
 
 [//]: # (Add github certificate to container)
 ssh -T git@github.com
+
+[//]: # (Run localy with allure-reports)
+./gradlew clean build generateAllureReport serveAllureReport
